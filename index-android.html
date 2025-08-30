@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
-  <title>Clocky Android (Debug)</title>
+  <title>Clocky Android (with Timer Fallback)</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -26,18 +26,21 @@
     select { font-size: 1rem; padding: 6px; border-radius: 6px; }
     ul { list-style:none; padding:0; }
     li { margin:8px 0; }
-
-    /* Debug overlay */
     #debug {
       position: fixed; bottom: 10px; left: 10px;
       background: rgba(0,0,0,0.6); color: #0f0;
       padding: 8px 12px; border-radius: 6px;
       font-size: 0.9rem; font-family: monospace;
     }
+    #fallback-btn {
+      position: fixed; bottom: 10px; right: 10px;
+      background: #ff9800; color:#000; font-weight:bold;
+      padding:8px 14px; border-radius:6px; cursor:pointer;
+    }
   </style>
 </head>
 <body>
-  <h1>Clocky Android (Debug)</h1>
+  <h1>Clocky Android</h1>
 
   <!-- Alarm -->
   <div id="alarm" class="section active">
@@ -75,17 +78,22 @@
     <p id="tm-status"></p>
   </div>
 
-  <!-- Debug overlay -->
+  <!-- Debug overlay + fallback button -->
   <div id="debug">Debug: waiting…</div>
+  <div id="fallback-btn" onclick="forceTimer()">⏲️ Timer</div>
 
 <script>
 (function(){
   const $=id=>document.getElementById(id);
   const pad2=n=>(n<10?'0':'')+n;
 
-  /* ---- Debug Overlay ---- */
-  function logDebug(msg){
-    $('debug').textContent = "Debug: " + msg;
+  function logDebug(msg){ $('debug').textContent="Debug: "+msg; }
+
+  /* ---- Fallback manual switch ---- */
+  window.forceTimer=function(){
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    $('timer').classList.add('active');
+    logDebug("Manual override → Timer");
   }
 
   /* ---- Chime ---- */
@@ -100,23 +108,19 @@
 
   /* ---- Orientation Fix (Android) ---- */
   function updateView(){
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    let angle = screen.orientation ? screen.orientation.angle : window.orientation;
-    let mode = 'portrait-up';
+    const w=window.innerWidth,h=window.innerHeight;
+    let angle=screen.orientation?screen.orientation.angle:window.orientation;
+    let mode='portrait-up';
 
-    if (w > h) {
-      // Landscape
-      if (angle === 90 || angle === -270) mode = 'landscape-right';
-      else mode = 'landscape-left'; // fallback
+    if(w>h){
+      if(angle===90||angle===-270) mode='landscape-right';
+      else mode='landscape-left';
     } else {
-      // Portrait
-      if (angle === 180 || angle === -180) mode = 'portrait-down';
-      else mode = 'portrait-up';
+      if(angle===180||angle===-180) mode='portrait-down';
+      else mode='portrait-up';
     }
 
-    // Debug info
-    logDebug(`w=${w}, h=${h}, angle=${angle}, mode=${mode}`);
+    logDebug(`w=${w},h=${h},angle=${angle},mode=${mode}`);
 
     document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
     if(mode==='portrait-up') $('alarm').classList.add('active');
@@ -134,7 +138,6 @@
   window.dismissAlarm=i=>{stopChime();const btn=$('dismiss-'+i);if(btn)btn.style.display='none';}
   $('add-alarm').onclick=()=>{let h=$('alarm-hour').value,m=$('alarm-minute').value;if(h===''||m===''){alert("Select time");return;}let t=`${pad2(h)}:${pad2(m)}`;alarms.push({time:t,active:true});renderAlarms();$('alarm-status').textContent="Alarm set for "+t;};
   setInterval(()=>{const now=new Date();const current=`${pad2(now.getHours())}:${pad2(now.getMinutes())}`;alarms.forEach((a,i)=>{if(a.active&&a.time===current){notify("⏰ Alarm","Time is up!");startChime();a.active=false;const btn=$('dismiss-'+i);if(btn)btn.style.display='inline-block';}});},1000);
-
   for(let i=0;i<24;i++) $('alarm-hour').add(new Option(pad2(i),i));
   for(let i=0;i<60;i++) $('alarm-minute').add(new Option(pad2(i),i));
 
@@ -163,4 +166,3 @@
 </script>
 </body>
 </html>
-
