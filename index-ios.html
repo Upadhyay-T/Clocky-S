@@ -33,11 +33,12 @@
 
   <!-- Alarm -->
   <div id="alarm" class="section active">
-    <h2>⏰ Alarms</h2>
+    <h2>⏰ Alarm</h2>
     <select id="alarm-hour"></select>:<select id="alarm-minute"></select>
-    <button id="add-alarm" class="success">Add Alarm</button>
+    <button id="set-alarm" class="success">Set Alarm</button>
+    <button id="cancel-alarm" class="danger" style="display:none">Cancel</button>
+    <button id="dismiss-alarm" class="danger" style="display:none">Dismiss</button>
     <p id="alarm-status"></p>
-    <ul id="alarm-list"></ul>
   </div>
 
   <!-- Stopwatch + Weather -->
@@ -72,19 +73,17 @@
   const $=id=>document.getElementById(id);
   const pad2=n=>(n<10?'0':'')+n;
 
-  /* -------- Chime -------- */
-  let audioCtx,chimeInt,chimeTimeout;
-  document.addEventListener('click', ()=>unlockAudio(), {once:true});
-  function unlockAudio(){ const AC=window.AudioContext||window.webkitAudioContext; if(!audioCtx) audioCtx=new AC(); if(audioCtx.state==='suspended') audioCtx.resume(); }
-  function startChime(){ stopChime(); unlockAudio(); if(!audioCtx) return;
-    chimeInt=setInterval(()=>{ const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(audioCtx.destination); const t=audioCtx.currentTime; g.gain.setValueAtTime(0.3,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.5); o.start(); o.stop(t+0.55); },1200);
-    chimeTimeout=setTimeout(stopChime,30000);
-  }
-  function stopChime(){ if(chimeInt) clearInterval(chimeInt); if(chimeTimeout) clearTimeout(chimeTimeout); chimeInt=null; chimeTimeout=null; }
+  /* ---------- Notifications + Chime ---------- */
+  let audioCtx=null,chimeInt=null,chimeTimeout=null;
+  document.addEventListener('click',()=>unlockAudio(),{once:true});
+  function unlockAudio(){try{if(!audioCtx){const AC=window.AudioContext||window.webkitAudioContext;audioCtx=new AC();}if(audioCtx.state==='suspended')audioCtx.resume();}catch(e){}}
+  function startChime(){stopChime();unlockAudio();if(!audioCtx)return;
+    chimeInt=setInterval(()=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=880;o.connect(g);g.connect(audioCtx.destination);const t=audioCtx.currentTime;g.gain.setValueAtTime(0.3,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.5);o.start();o.stop(t+0.55);},1200);
+    chimeTimeout=setTimeout(stopChime,30000);}
+  function stopChime(){if(chimeInt)clearInterval(chimeInt);if(chimeTimeout)clearTimeout(chimeTimeout);chimeInt=null;chimeTimeout=null;}
+  async function notify(title,body){if(Notification.permission!=='granted')await Notification.requestPermission();if(Notification.permission==='granted')new Notification(title,{body});else alert(title+"\n"+body);}
 
-  async function notify(title,body){ if(Notification.permission!=='granted') await Notification.requestPermission(); if(Notification.permission==='granted') new Notification(title,{body}); else alert(title+"\n"+body); }
-
-  /* -------- Orientation (iOS) -------- */
+  /* ---------- Orientation Mapping (iOS) ---------- */
   function updateView(){
     let angle=screen.orientation?screen.orientation.angle:window.orientation;
     let mode='portrait-up';
@@ -96,39 +95,70 @@
     if(mode==='landscape-left') $('stopwatch').classList.add('active');
     if(mode==='landscape-right') $('timer').classList.add('active');
   }
-  window.addEventListener('orientationchange', updateView); updateView();
+  window.addEventListener('orientationchange', updateView);
+  window.addEventListener('resize', updateView);
+  updateView();
 
-  /* -------- Multiple Alarms -------- */
-  let alarms=[];
-  function renderAlarms(){ const list=$('alarm-list'); list.innerHTML=''; alarms.forEach((a,i)=>{ const li=document.createElement('li'); li.innerHTML=`${a.time} <button class="danger" onclick="cancelAlarm(${i})">Cancel</button> <button id="dismiss-${i}" class="danger" style="display:none" onclick="dismissAlarm(${i})">Dismiss</button>`; list.appendChild(li); }); }
-  window.cancelAlarm=i=>{ alarms.splice(i,1); renderAlarms(); }
-  window.dismissAlarm=i=>{ stopChime(); const btn=$('dismiss-'+i); if(btn) btn.style.display='none'; }
-  $('add-alarm').onclick=()=>{ let h=$('alarm-hour').value,m=$('alarm-minute').value; if(h===''||m===''){alert("Select time");return;} let t=`${pad2(h)}:${pad2(m)}`; alarms.push({time:t,active:true}); renderAlarms(); $('alarm-status').textContent="Alarm set for "+t; };
-  setInterval(()=>{ const now=new Date(); const current=`${pad2(now.getHours())}:${pad2(now.getMinutes())}`; alarms.forEach((a,i)=>{ if(a.active&&a.time===current){ notify("⏰ Alarm","Time is up!"); startChime(); a.active=false; const btn=$('dismiss-'+i); if(btn) btn.style.display='inline-block'; } }); },1000);
+  /* ---------- Alarm ---------- */
+  let alarmTO=null;
+  $('set-alarm').onclick=()=>{
+    const h=$('alarm-hour').value,m=$('alarm-minute').value;
+    if(h===''||m===''){alert('Select time');return;}
+    const now=new Date(),t=new Date();t.setHours(h,m,0,0);
+    if(t<=now) t.setDate(t.getDate()+1);
+    const ms=t-now;
+    clearTimeout(alarmTO);
+    alarmTO=setTimeout(triggerAlarm,ms);
+    $('alarm-status').textContent="Alarm set for "+t.toLocaleTimeString();
+    $('set-alarm').style.display='none';
+    $('cancel-alarm').style.display='inline-block';
+  };
+  $('cancel-alarm').onclick=()=>{
+    clearTimeout(alarmTO);alarmTO=null;
+    stopChime();
+    $('alarm-status').textContent="Alarm cancelled";
+    $('set-alarm').style.display='inline-block';
+    $('cancel-alarm').style.display='none';
+    $('dismiss-alarm').style.display='none';
+  };
+  function triggerAlarm(){
+    notify("⏰ Alarm","Time is up!");
+    startChime();
+    $('dismiss-alarm').style.display='inline-block';
+  }
+  $('dismiss-alarm').onclick=()=>{
+    stopChime();
+    clearTimeout(alarmTO);
+    alarmTO=null;
+    $('dismiss-alarm').style.display='none';
+    $('set-alarm').style.display='inline-block';
+    $('cancel-alarm').style.display='none';
+    $('alarm-status').textContent="Alarm dismissed";
+  };
 
   for(let i=0;i<24;i++) $('alarm-hour').add(new Option(pad2(i),i));
   for(let i=0;i<60;i++) $('alarm-minute').add(new Option(pad2(i),i));
 
-  /* -------- Stopwatch -------- */
+  /* ---------- Stopwatch ---------- */
   let swRun=false,swStart=0,swAccum=0,swInt;
-  function fmt(ms){const m=Math.floor(ms/60000),s=Math.floor((ms%60000)/1000),c=Math.floor((ms%1000)/10);return pad2(m)+":"+pad2(s)+"."+pad2(c);}
-  function tick(){const e=swAccum+(swRun?(Date.now()-swStart):0); $('sw-display').textContent=fmt(e);}
-  $('sw-start').onclick=()=>{swRun=true;swStart=Date.now();$('sw-start').style.display='none';$('sw-stop').style.display='inline-block';$('sw-lap').style.display='inline-block';swInt=setInterval(tick,100);}
+  function swFmt(ms){const m=Math.floor(ms/60000),s=Math.floor((ms%60000)/1000),c=Math.floor((ms%1000)/10);return pad2(m)+":"+pad2(s)+"."+pad2(c);}
+  function swTick(){const e=swAccum+(swRun?(Date.now()-swStart):0);$('sw-display').textContent=swFmt(e);}
+  $('sw-start').onclick=()=>{swRun=true;swStart=Date.now();$('sw-start').style.display='none';$('sw-stop').style.display='inline-block';$('sw-lap').style.display='inline-block';swInt=setInterval(swTick,100);}
   $('sw-stop').onclick=()=>{swRun=false;swAccum+=Date.now()-swStart;$('sw-start').style.display='inline-block';$('sw-stop').style.display='none';$('sw-lap').style.display='none';$('sw-reset').style.display='inline-block';clearInterval(swInt);}
   $('sw-reset').onclick=()=>{swRun=false;swAccum=0;$('sw-display').textContent='00:00.00';$('sw-laps').innerHTML='';$('sw-reset').style.display='none';}
-  $('sw-lap').onclick=()=>{const e=swAccum+(swRun?(Date.now()-swStart):0);$('sw-laps').innerHTML+="<div>Lap "+($('sw-laps').children.length+1)+": "+fmt(e)+"</div>";}
+  $('sw-lap').onclick=()=>{const e=swAccum+(swRun?(Date.now()-swStart):0);$('sw-laps').innerHTML+="<div>Lap "+($('sw-laps').children.length+1)+": "+swFmt(e)+"</div>";}
 
-  /* -------- Timer -------- */
-  for(let i=0;i<=59;i++){ $('tm-min').add(new Option(pad2(i),i)); $('tm-sec').add(new Option(pad2(i),i)); }
+  /* ---------- Timer ---------- */
+  for(let i=0;i<=59;i++){$('tm-min').add(new Option(pad2(i),i));$('tm-sec').add(new Option(pad2(i),i));}
   let tmInt,tmEnd;
-  $('tm-start').onclick=()=>{const m=parseInt($('tm-min').value||0),s=parseInt($('tm-sec').value||0); if(m===0&&s===0){alert("Pick time");return;} tmEnd=Date.now()+(m*60+s)*1000; clearInterval(tmInt); tmInt=setInterval(tickTimer,250); $('tm-status').textContent="Timer running…"; $('tm-start').style.display='none'; $('tm-stop').style.display='inline-block';}
+  $('tm-start').onclick=()=>{const m=parseInt($('tm-min').value||0),s=parseInt($('tm-sec').value||0);if(m===0&&s===0){alert("Pick time");return;}tmEnd=Date.now()+(m*60+s)*1000;clearInterval(tmInt);tmInt=setInterval(tmTick,250);$('tm-status').textContent="Timer running…";$('tm-start').style.display='none';$('tm-stop').style.display='inline-block';}
   $('tm-stop').onclick=()=>{clearInterval(tmInt);$('tm-status').textContent="Timer stopped";$('tm-start').style.display='inline-block';$('tm-stop').style.display='none';$('tm-reset').style.display='inline-block';}
   $('tm-reset').onclick=()=>{clearInterval(tmInt);$('tm-status').textContent="";$('tm-start').style.display='inline-block';$('tm-stop').style.display='none';$('tm-reset').style.display='none';$('tm-dismiss').style.display='none';$('tm-min').value="00";$('tm-sec').value="00";}
-  function tickTimer(){const rem=Math.max(0,Math.round((tmEnd-Date.now())/1000));$('tm-status').textContent=pad2(Math.floor(rem/60))+":"+pad2(rem%60);if(rem<=0){clearInterval(tmInt);notify("⏲️ Timer","Finished!");startChime();$('tm-dismiss').style.display='inline-block';}}
+  function tmTick(){const rem=Math.max(0,Math.round((tmEnd-Date.now())/1000));$('tm-status').textContent=pad2(Math.floor(rem/60))+":"+pad2(rem%60);if(rem<=0){clearInterval(tmInt);notify("⏲️ Timer","Finished!");startChime();$('tm-dismiss').style.display='inline-block';}}
   $('tm-dismiss').onclick=()=>{stopChime();$('tm-dismiss').style.display='none';}
 
-  /* -------- Weather -------- */
-  async function loadWeather(){if(!navigator.geolocation){$('wx-status').textContent="No geolocation";return;} navigator.geolocation.getCurrentPosition(async pos=>{const lat=pos.coords.latitude,lon=pos.coords.longitude;const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);const data=await res.json();const cw=data.current_weather;$('wx-box').textContent=`${cw.temperature}°C · wind ${cw.windspeed} km/h`;const loc=await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=en`);const ldata=await loc.json();if(ldata.results&&ldata.results[0])$('wx-place').textContent=ldata.results[0].name;},()=>{$('wx-status').textContent="Location denied";});}
+  /* ---------- Weather ---------- */
+  async function loadWeather(){if(!navigator.geolocation){$('wx-status').textContent="No geolocation";return;}navigator.geolocation.getCurrentPosition(async pos=>{const lat=pos.coords.latitude,lon=pos.coords.longitude;const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);const data=await res.json();const cw=data.current_weather;$('wx-box').textContent=`${cw.temperature}°C · wind ${cw.windspeed} km/h`;const loc=await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=en`);const ldata=await loc.json();if(ldata.results&&ldata.results[0])$('wx-place').textContent=ldata.results[0].name;},()=>{$('wx-status').textContent="Location denied";});}
   $('wx-refresh').onclick=loadWeather; loadWeather();
 })();
 </script>
