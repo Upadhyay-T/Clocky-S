@@ -36,3 +36,4 @@ Clocky is a mobile-first web application with:
    - Folder: `/ (root)`  
 3. Save.  
 4. Open:  
+https://upadhyay-t.github.io/Clocky-S/
