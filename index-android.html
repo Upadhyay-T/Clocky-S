@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
-  <title>Clocky Android (with Timer Fallback)</title>
+  <title>Clocky Android</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -86,7 +86,6 @@
 (function(){
   const $=id=>document.getElementById(id);
   const pad2=n=>(n<10?'0':'')+n;
-
   function logDebug(msg){ $('debug').textContent="Debug: "+msg; }
 
   /* ---- Fallback manual switch ---- */
@@ -111,7 +110,6 @@
     const w=window.innerWidth,h=window.innerHeight;
     let angle=screen.orientation?screen.orientation.angle:window.orientation;
     let mode='portrait-up';
-
     if(w>h){
       if(angle===90||angle===-270) mode='landscape-right';
       else mode='landscape-left';
@@ -119,9 +117,7 @@
       if(angle===180||angle===-180) mode='portrait-down';
       else mode='portrait-up';
     }
-
     logDebug(`w=${w},h=${h},angle=${angle},mode=${mode}`);
-
     document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
     if(mode==='portrait-up') $('alarm').classList.add('active');
     if(mode==='landscape-right') $('stopwatch').classList.add('active');
@@ -133,11 +129,47 @@
 
   /* ---- Multiple Alarms ---- */
   let alarms=[];
-  function renderAlarms(){const list=$('alarm-list');list.innerHTML='';alarms.forEach((a,i)=>{const li=document.createElement('li');li.innerHTML=`${a.time} <button class="danger" onclick="cancelAlarm(${i})">Cancel</button> <button id="dismiss-${i}" class="danger" style="display:none" onclick="dismissAlarm(${i})">Dismiss</button>`;list.appendChild(li);});}
-  window.cancelAlarm=i=>{alarms.splice(i,1);renderAlarms();}
-  window.dismissAlarm=i=>{stopChime();const btn=$('dismiss-'+i);if(btn)btn.style.display='none';}
-  $('add-alarm').onclick=()=>{let h=$('alarm-hour').value,m=$('alarm-minute').value;if(h===''||m===''){alert("Select time");return;}let t=`${pad2(h)}:${pad2(m)}`;alarms.push({time:t,active:true});renderAlarms();$('alarm-status').textContent="Alarm set for "+t;};
-  setInterval(()=>{const now=new Date();const current=`${pad2(now.getHours())}:${pad2(now.getMinutes())}`;alarms.forEach((a,i)=>{if(a.active&&a.time===current){notify("⏰ Alarm","Time is up!");startChime();a.active=false;const btn=$('dismiss-'+i);if(btn)btn.style.display='inline-block';}});},1000);
+  function renderAlarms(){
+    const list=$('alarm-list');list.innerHTML='';
+    alarms.forEach((a,i)=>{
+      const li=document.createElement('li');
+      li.innerHTML=`${a.time} 
+        <button class="danger" onclick="cancelAlarm(${i})">Cancel</button> 
+        <button id="dismiss-${i}" class="danger" style="display:none" onclick="dismissAlarm(${i})">Dismiss</button>`;
+      list.appendChild(li);
+    });
+  }
+  window.cancelAlarm=i=>{
+    alarms.splice(i,1);
+    renderAlarms();
+  }
+  window.dismissAlarm=i=>{
+    stopChime();
+    clearTimeout(alarms[i]?.timeout);
+    alarms[i].active=false;
+    const btn=$('dismiss-'+i);
+    if(btn) btn.style.display='none';
+  }
+  $('add-alarm').onclick=()=>{
+    let h=$('alarm-hour').value,m=$('alarm-minute').value;
+    if(h===''||m===''){alert("Select time");return;}
+    let t=`${pad2(h)}:${pad2(m)}`;
+    const now=new Date(), target=new Date(); target.setHours(h,m,0,0);
+    if(target<=now) target.setDate(target.getDate()+1);
+    const ms=target-now;
+    let idx=alarms.length;
+    const timeout=setTimeout(()=>triggerAlarm(idx),ms);
+    alarms.push({time:t,active:true,timeout});
+    renderAlarms();
+    $('alarm-status').textContent="Alarm set for "+t;
+  };
+  function triggerAlarm(i){
+    notify("⏰ Alarm","Time is up!");
+    startChime();
+    const btn=$('dismiss-'+i);
+    if(btn) btn.style.display='inline-block';
+  }
+
   for(let i=0;i<24;i++) $('alarm-hour').add(new Option(pad2(i),i));
   for(let i=0;i<60;i++) $('alarm-minute').add(new Option(pad2(i),i));
 
