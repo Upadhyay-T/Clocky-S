@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Choose Your Version - Clocky</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #1f1c2c, #928dab);
+      color: #fff;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      min-height: 100vh; margin: 0; text-align: center;
+    }
+    h1 { font-size: 2rem; margin-bottom: 1rem; }
+    p { margin-bottom: 2rem; opacity: 0.85; }
+    .btn {
+      margin: 10px; padding: 15px 30px;
+      border: none; border-radius: 12px;
+      font-size: 1.2rem; font-weight: bold;
+      cursor: pointer; transition: 0.2s ease;
+    }
+    .btn:hover { transform: translateY(-2px); opacity: 0.9; }
+    .ios { background: #ef476f; color: white; }
+    .android { background: #06d6a0; color: white; }
+  </style>
+</head>
+<body>
+  <h1>Welcome to Clocky ⏰</h1>
+  <p>Please choose your version:</p>
+  <button class="btn ios" onclick="window.location='index-ios.html'">🍎 iPhone / iPad</button>
+  <button class="btn android" onclick="window.location='index-android.html'">🤖 Android</button>
+</body>
+</html>

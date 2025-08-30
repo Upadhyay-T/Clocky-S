@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Clocky Redirect</title>
+  <script>
+    (function(){
+      var ua = navigator.userAgent || navigator.vendor || window.opera;
+      if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
+        window.location.replace("index-ios.html");
+      } else if (/android/i.test(ua)) {
+        window.location.replace("index-android.html");
+      } else {
+        window.location.replace("choose.html");
+      }
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting to the correct version…</p>
+</body>
+</html>
