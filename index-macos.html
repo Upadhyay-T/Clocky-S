@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Clocky macOS</title>
+  <style>
+:root{
+  --bg-grad-1:#0f0f14;
+  --bg-grad-2:#1b2230;
+  --card-bg: rgba(255,255,255,0.06);
+  --card-border: rgba(255,255,255,0.12);
+  --blur: 12px;
+  --text:#e9eef7;
+  --muted:#a8b0c3;
+  --accent:#7aa2ff;
+  --success:#22d3a6;
+  --danger:#ff5c8a;
+  --info:#5aa9ff;
+  --ring: rgba(122,162,255,0.5);
+  --radius:16px;
+  --shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 10px 30px rgba(0,0,0,0.35);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family: var(--font);
+  background: radial-gradient(1200px 600px at 10% -10%, #1f2b46 0%, transparent 60%),
+              radial-gradient(900px 700px at 110% 10%, #2b1f46 0%, transparent 60%),
+              linear-gradient(135deg, var(--bg-grad-1), var(--bg-grad-2));
+  color: var(--text);
+  margin:0; padding: clamp(16px, 3vw, 32px);
+}
+.container{ width:min(1100px, 94vw); margin:0 auto; display:grid; gap: clamp(16px, 3vw, 24px) }
+header{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 4px 2px }
+h1{
+  margin:0; font-weight:700; letter-spacing:.2px;
+  font-size: clamp(22px, 3.4vw, 28px);
+  background: linear-gradient(180deg,#fff,#9fb3ff);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.mode{ font-size:14px; color:var(--muted) }
+
+.tabs{ display:flex; gap:8px; flex-wrap:wrap }
+.tabs button{
+  background: linear-gradient(180deg, #7db4ff, #4f8dff);
+  color: white;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform .06s ease, box-shadow .2s;
+  box-shadow: 0 1px 0 rgba(255,255,255,.15) inset, 0 8px 16px rgba(0,0,0,.25);
+}
+.tabs button:hover{ transform: translateY(-1px) }
+.tabs button.active{ background: linear-gradient(180deg, #25e1b0, #19b98f) }
+
+.section{
+  display:none;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: clamp(16px, 3.5vw, 28px);
+}
+.section.active{ display:block; animation: fadeIn 250ms ease-out }
+.section h2{ margin:0 0 12px 0; font-size: clamp(18px, 2.2vw, 22px); font-weight:650; color:#f2f5ff }
+
+#sw-display{
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(36px, 6vw, 56px);
+  letter-spacing:1px; padding:4px 10px; border-radius:10px;
+  background: rgba(255,255,255,0.04);
+}
+
+select{
+  appearance:none; -webkit-appearance:none;
+  background: rgba(255,255,255,0.07);
+  color: var(--text);
+  border:1px solid var(--card-border);
+  border-radius:12px;
+  padding:10px 12px; font-size:16px;
+  transition: border-color .2s, box-shadow .2s, transform .06s ease;
+}
+select:focus{ outline:none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--ring) }
+
+button{
+  margin: 4px; padding: 12px 18px;
+  border:1px solid var(--card-border); border-radius:12px;
+  font-weight:700; font-size:15px; color:#0d1220; cursor:pointer;
+  transition: transform .06s ease, box-shadow .2s, filter .2s;
+  box-shadow: 0 1px 0 rgba(255,255,255,.15) inset, 0 8px 16px rgba(0,0,0,.25);
+}
+button:hover{ transform: translateY(-1px) }
+button:active{ transform: translateY(0) scale(.98) }
+.success{ background: linear-gradient(180deg,#25e1b0,#19b98f) }
+.danger{ background: linear-gradient(180deg,#ff6a98,#e33d73); color:white }
+.info{ background: linear-gradient(180deg,#7db4ff,#4f8dff); color:white }
+button[style*="display:none"]{ display:none !important }
+
+#sw-laps>div{
+  background: rgba(255,255,255,0.04);
+  border:1px solid var(--card-border);
+  border-radius:10px; padding:8px 10px; margin-top:6px;
+  font-variant-numeric: tabular-nums; color: var(--muted);
+}
+
+p, #tm-status, #alarm-status, #wx-status, #wx-box, #wx-place{
+  color: var(--muted); margin: 6px 0 0 0; font-size:14px;
+}
+
+@keyframes fadeIn{ from{opacity:0; transform: translateY(6px)} to{opacity:1; transform:none} }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Clocky macOS</h1>
+      <div class="mode">Use tabs to switch: Alarm • Stopwatch • Timer • Weather</div>
+    </header>
+
+    <div class="tabs">
+      <button onclick="show('alarm', this)" class="active">⏰ Alarm</button>
+      <button onclick="show('stopwatch', this)">⏱️ Stopwatch</button>
+      <button onclick="show('timer', this)">⏲️ Timer</button>
+      <button onclick="show('weather', this)">🌤️ Weather</button>
+    </div>
+
+  <!-- Alarm -->
+  <div id="alarm" class="section active">
+    <h2>⏰ Alarms</h2>
+    <select id="alarm-hour"></select>:<select id="alarm-minute"></select>
+    <button id="add-alarm" class="success">Add</button>
+    <div id="alarms"></div>
+    <p id="alarm-status"></p>
+  </div>
+
+  <!-- Stopwatch -->
+  <div id="stopwatch" class="section">
+    <h2>⏱️ Stopwatch</h2>
+    <div id="sw-display">00:00.00</div>
+    <button id="sw-start" class="success">Start</button>
+    <button id="sw-stop" class="danger" style="display:none">Stop</button>
+    <button id="sw-lap" class="info" style="display:none">Lap</button>
+    <button id="sw-reset" style="display:none">Reset</button>
+    <div id="sw-laps"></div>
+  </div>
+
+  <!-- Timer -->
+  <div id="timer" class="section">
+    <h2>⏲️ Timer</h2>
+    <select id="tm-min"></select>:<select id="tm-sec"></select>
+    <button id="tm-start" class="success">Start</button>
+    <button id="tm-stop" class="danger" style="display:none">Stop</button>
+    <button id="tm-reset" style="display:none">Reset</button>
+    <button id="tm-dismiss" class="danger" style="display:none">Dismiss</button>
+    <p id="tm-status"></p>
+  </div>
+
+  <!-- Weather -->
+  <div id="weather" class="section">
+    <h2>🌤️ Weather</h2>
+    <div id="wx-status">Loading...</div>
+    <div id="wx-box"></div>
+    <div id="wx-place"></div>
+    <button id="wx-refresh" class="info">Refresh</button>
+  </div>
+
+  </div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const pad2 = n => (n<10?'0':'')+n;
+
+  // Tabs
+  window.show = (id, btn) => {
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    const t=$(id); if(t) t.classList.add('active');
+    document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+  };
+
+  // Populate selects
+  for(let i=0;i<24;i++) $('alarm-hour').add(new Option(pad2(i),i));
+  for(let i=0;i<60;i++) $('alarm-minute').add(new Option(pad2(i),i));
+  for(let i=0;i<=59;i++){ $('tm-min').add(new Option(pad2(i),i)); $('tm-sec').add(new Option(pad2(i),i)); }
+
+  // Stopwatch
+  let swRun=false, swStart=0, swAccum=0, swInt;
+  function fmt(ms){const m=Math.floor(ms/60000),s=Math.floor((ms%60000)/1000),c=Math.floor((ms%1000)/10);return pad2(m)+":"+pad2(s)+"."+pad2(c);}
+  function tick(){const e=swAccum+(swRun?(Date.now()-swStart):0); $('sw-display').textContent=fmt(e);}
+  $('sw-start').onclick=()=>{swRun=true;swStart=Date.now();$('sw-start').style.display='none';$('sw-stop').style.display='inline-block';$('sw-lap').style.display='inline-block';swInt=setInterval(tick,100);}
+  $('sw-stop').onclick=()=>{swRun=false;swAccum+=Date.now()-swStart;$('sw-start').style.display='inline-block';$('sw-stop').style.display='none';$('sw-lap').style.display='none';$('sw-reset').style.display='inline-block';clearInterval(swInt);}
+  $('sw-reset').onclick=()=>{swRun=false;swAccum=0;$('sw-display').textContent='00:00.00';$('sw-laps').innerHTML='';$('sw-reset').style.display='none';}
+  $('sw-lap').onclick=()=>{const e=swAccum+(swRun?(Date.now()-swStart):0);$('sw-laps').innerHTML+="<div>Lap "+($('sw-laps').children.length+1)+": "+fmt(e)+"</div>";}
+
+  // Timer
+  let tmInt, tmEnd;
+  $('tm-start').onclick=()=>{const m=parseInt($('tm-min').value||0),s=parseInt($('tm-sec').value||0); if(m===0&&s===0){alert("Pick time");return;} tmEnd=Date.now()+(m*60+s)*1000; clearInterval(tmInt); tmInt=setInterval(tickTimer,250); $('tm-status').textContent="Timer running…"; $('tm-start').style.display='none'; $('tm-stop').style.display='inline-block';}
+  $('tm-stop').onclick=()=>{clearInterval(tmInt);$('tm-status').textContent="Timer stopped";$('tm-start').style.display='inline-block';$('tm-stop').style.display='none';$('tm-reset').style.display='inline-block';}
+  $('tm-reset').onclick=()=>{clearInterval(tmInt);$('tm-status').textContent="";$('tm-start').style.display='inline-block';$('tm-stop').style.display='none';$('tm-reset').style.display='none';$('tm-dismiss').style.display='none';$('tm-min').value="00";$('tm-sec').value="00";}
+  function tickTimer(){const rem=Math.max(0,Math.round((tmEnd-Date.now())/1000));$('tm-status').textContent=pad2(Math.floor(rem/60))+":"+pad2(rem%60);if(rem<=0){clearInterval(tmInt);alert("⏲️ Timer\\nFinished!");$('tm-dismiss').style.display='inline-block';}}
+  $('tm-dismiss').onclick=()=>{$('tm-dismiss').style.display='none';}
+
+  // Weather
+  async function loadWeather(){
+    if(!navigator.geolocation){$('wx-status').textContent="No geolocation";return;}
+    navigator.geolocation.getCurrentPosition(async pos=>{
+      const lat=pos.coords.latitude,lon=pos.coords.longitude;
+      const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+      const data=await res.json(); const cw=data.current_weather;
+      $('wx-box').textContent=`${cw.temperature}°C · wind ${cw.windspeed} km/h`;
+      const loc=await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=en`);
+      const ldata=await loc.json(); if(ldata.results&&ldata.results) $('wx-place').textContent=ldata.results.name;
+    },()=>{$('wx-status').textContent="Location denied";});
+  }
+  $('wx-refresh').onclick=loadWeather; loadWeather();
+})();
+</script>
+</body>
+</html>
