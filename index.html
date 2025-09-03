@@ -4,20 +4,87 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Clocky Redirect</title>
+  <style>
+:root{
+  --bg-grad-1:#0f0f14;
+  --bg-grad-2:#1b2230;
+  --card-bg: rgba(255,255,255,0.06);
+  --card-border: rgba(255,255,255,0.12);
+  --blur: 12px;
+  --text:#e9eef7;
+  --muted:#a8b0c3;
+  --accent:#7aa2ff;
+  --success:#22d3a6;
+  --danger:#ff5c8a;
+  --info:#5aa9ff;
+  --ring: rgba(122,162,255,0.5);
+  --radius:16px;
+  --shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 10px 30px rgba(0,0,0,0.35);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family: var(--font);
+  background: radial-gradient(1200px 600px at 10% -10%, #1f2b46 0%, transparent 60%),
+              radial-gradient(900px 700px at 110% 10%, #2b1f46 0%, transparent 60%),
+              linear-gradient(135deg, var(--bg-grad-1), var(--bg-grad-2));
+  color: var(--text);
+  margin:0; padding: clamp(16px, 3vw, 32px);
+}
+.container{ width:min(1100px, 94vw); margin:0 auto; display:grid; gap: clamp(16px, 3vw, 24px) }
+header{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 4px 2px }
+h1{
+  margin:0; font-weight:700; letter-spacing:.2px;
+  font-size: clamp(22px, 3.4vw, 28px);
+  background: linear-gradient(180deg,#fff,#9fb3ff);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.mode{ font-size:14px; color:var(--muted) }
+
+.card{
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(var(--blur));
+  -webkit-backdrop-filter: blur(var(--blur));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: clamp(16px, 3.5vw, 28px);
+}
+
+p{ color: var(--muted); margin: 6px 0 0 0; font-size:14px }
+  </style>
   <script>
     (function(){
       var ua = navigator.userAgent || navigator.vendor || window.opera;
+      function go(u){ try{ window.location.replace(u); }catch(_){ window.location.href = u; } }
+      // Normalize path names to match the project (case-sensitive servers)
+      var IOS = 'index-iOS.html';
+      var AND = 'index-android.html';
+      var CHOOSE = 'choose.html';
       if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
-        window.location.replace("index-ios.html");
+        go(IOS);
       } else if (/android/i.test(ua)) {
-        window.location.replace("index-android.html");
+        go(AND);
       } else {
-        window.location.replace("choose.html");
+        go(CHOOSE);
       }
     })();
   </script>
 </head>
 <body>
-  <p>Redirecting to the correct version…</p>
+
+  <div class="container">
+    <header>
+      <h1>Clocky</h1>
+      <div class="mode">Unified UI • Alarm • Stopwatch • Timer • Weather</div>
+    </header>
+
+    <div class="card">
+      <p>Redirecting to the correct version… If nothing happens, open choose.html to pick manually.</p>
+    </div>
+  </div>
+
 </body>
 </html>
+
